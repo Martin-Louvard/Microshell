@@ -3,14 +3,19 @@
 
 # include <stdlib.h>
 # include <unistd.h>
-# include <fctnl.h>
+# include <stdio.h>
+# include <string.h>
+
+typedef struct  s_cmd t_cmd;
 
 typedef struct  s_cmd
 {
-    int tube[2];
+    char *type;
     char *cmd;
     char **cmd_args;
+    int pipe[2];
     t_cmd *next;
+    t_cmd *previous;
 }   t_cmd;
 
 typedef struct s_params
