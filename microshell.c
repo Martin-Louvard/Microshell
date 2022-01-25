@@ -89,6 +89,8 @@ int parse_args(int argc, char **argv, t_cmd **cmd_lst)
         {
             if(!add_cmd_to_lst(cmd_lst, current_arg))
                 return (1);
+            if (!add_args(cmd_lst, current_arg))
+                return (1);
         }
         else if (!strcmp(current_arg, "|"))
             add_type(cmd_lst, "pipe");
@@ -122,9 +124,45 @@ void    print_lst(t_cmd *cmd_lst)
     }
 }
 
-void    exec_cmds(t_cmd **cmd_lst)
+int     exec(t_cmd *current, char **envp)
 {
-    
+    if (!strcmp("pipe", current->type))
+    {
+        dup2(current->pipe[0], 1);
+        close(current->pipe[1]);
+    }
+    if (current->previous && !strcmp("pipe", current->previous->type))
+    {
+        dup2(current->previous->pipe[1], 0);
+        close(current->previous->pipe[0]);
+    }
+    execve(current->cmd, current->cmd_args , envp);
+    if (!strcmp("break", current->type))
+        write(1, "\n", 1);
+}
+
+int    exec_cmds(t_cmd **first_ptr, char **envp)
+{
+    t_cmd *current = *first_ptr;
+
+    while(current)
+    {
+        if (!strcmp("pipe", current->type))
+        {
+            if (pipe(current->pipe) < 0)
+                return (0);
+        }
+        current->pid = fork();
+        if (!current->pid)
+        {
+           
+            if(!exec(current, envp))
+                return (0);
+            return (1);
+        }
+        current = current->next;
+    }
+    return (1);
 }
 
 int main(int argc, char **argv, char **envp)
@@ -135,7 +173,8 @@ int main(int argc, char **argv, char **envp)
     if(parse_args(argc, argv, &cmd_lst))
         write(2, "Arguments Error\n", 16);
     //print_lst(cmd_lst);
-    exec_cmds(&cmd_lst);
-
+    if (!exec_cmds(&cmd_lst, envp))
+        write(2, "Execution Error\n", 16);
+    waitpid(-1, NULL, 0);
     return (0);    
 }
