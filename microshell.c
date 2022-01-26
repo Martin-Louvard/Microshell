@@ -128,17 +128,16 @@ int     exec(t_cmd *current, char **envp)
 {
     if (!strcmp("pipe", current->type))
     {
-        dup2(current->pipe[0], 1);
-        close(current->pipe[1]);
+        dup2(current->pipe[1], 1);
+        close(current->pipe[0]);
     }
     if (current->previous && !strcmp("pipe", current->previous->type))
     {
-        dup2(current->previous->pipe[1], 0);
-        close(current->previous->pipe[0]);
+        dup2(current->previous->pipe[0], 0);
+        close(current->previous->pipe[1]);
     }
     execve(current->cmd, current->cmd_args , envp);
-    if (!strcmp("break", current->type))
-        write(1, "\n", 1);
+    return (1);
 }
 
 int    exec_cmds(t_cmd **first_ptr, char **envp)
@@ -160,6 +159,12 @@ int    exec_cmds(t_cmd **first_ptr, char **envp)
                 return (0);
             return (1);
         }
+        if (current->previous && !strcmp("pipe", current->previous->type))
+        {
+            close(current->previous->pipe[0]);
+            close(current->previous->pipe[1]);
+        }
+        waitpid(current->pid, NULL, 0);
         current = current->next;
     }
     return (1);
