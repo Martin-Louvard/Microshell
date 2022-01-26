@@ -85,7 +85,7 @@ int parse_args(int argc, char **argv, t_cmd **cmd_lst)
     while (i < argc)
     {
         current_arg = argv[i];
-        if (!strncmp(current_arg, "/", 1))
+        if (!strncmp(current_arg, "/", 1) || !strncmp(current_arg, "cd", 2))
         {
             if(!add_cmd_to_lst(cmd_lst, current_arg))
                 return (1);
@@ -146,25 +146,35 @@ int    exec_cmds(t_cmd **first_ptr, char **envp)
 
     while(current)
     {
-        if (!strcmp("pipe", current->type))
+        if (!strcmp("cd", current->cmd))
         {
-            if (pipe(current->pipe) < 0)
-                return (0);
+            if (!current->cmd_args[1])
+                write(2, "error: cd: bad arguments\n", 25);
+            else if (chdir(current->cmd_args[1]))
+                write(2, "error: cd: cannot change directory\n", 35);
         }
-        current->pid = fork();
-        if (!current->pid)
+        else
         {
-           
-            if(!exec(current, envp))
-                return (0);
-            return (1);
+            if (!strcmp("pipe", current->type))
+            {
+                if (pipe(current->pipe) < 0)
+                    return (0);
+            }
+            current->pid = fork();
+            if (!current->pid)
+            {
+            
+                if(!exec(current, envp))
+                    return (0);
+                return (1);
+            }
+            if (current->previous && !strcmp("pipe", current->previous->type))
+            {
+                close(current->previous->pipe[0]);
+                close(current->previous->pipe[1]);
+            }
+            waitpid(current->pid, NULL, 0);
         }
-        if (current->previous && !strcmp("pipe", current->previous->type))
-        {
-            close(current->previous->pipe[0]);
-            close(current->previous->pipe[1]);
-        }
-        waitpid(current->pid, NULL, 0);
         current = current->next;
     }
     return (1);
