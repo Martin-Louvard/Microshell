@@ -148,7 +148,7 @@ int    exec_cmds(t_cmd **first_ptr, char **envp)
     {
         if (!strcmp("cd", current->cmd))
         {
-            if (!current->cmd_args[1])
+            if (!current->cmd_args[1] || current->cmd_args[2])
                 write(2, "error: cd: bad arguments\n", 25);
             else if (chdir(current->cmd_args[1]))
                 write(2, "error: cd: cannot change directory\n", 35);
